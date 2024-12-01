@@ -2,11 +2,12 @@ from flask import Blueprint, request, jsonify, Response
 mail = Blueprint('mail', __name__)
 import datetime
 import time
-from functions.chaker import Checker
+from functions.chacker import Checker
 from functions.base_state import collection_alert_mail
 
 
-@mail.route('/mail', methods=['POST'])
+#/alerting/api/v1/mail?chat=mail@examples.com,mail2@examples.com
+@mail.route('/alerting/api/v1/mail', methods=['POST'])
 def alert():
     start_time = time.time()
     ts = int(datetime.datetime.now().timestamp())
@@ -18,7 +19,7 @@ def alert():
             collection_alert_mail.insert_one(query)
         except:
             pass
-        result = Checker.checker_mail(request.get_json(), request.args['chat'])
+        Checker.checker_mail(request.get_json(), request.args['chat'])
         return jsonify({'data': 'ok'}), 200
     else:
         pass

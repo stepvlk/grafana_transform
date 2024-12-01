@@ -9,7 +9,8 @@ from functions.base_state import collection_alert
 def get_health():
     return jsonify({'status': 'Started'}), 200
 
-@webhook.route('/alerting/api/v1/telegram', methods=['POST'])
+#/alerting/api/v1/telegram?chat=-4530347279
+@webhook.route('/alerting/api/v1/telegram', methods=['POST']) 
 def alert():
     ts = int(datetime.datetime.now().timestamp())
     if request.method == "POST":
@@ -27,8 +28,8 @@ def alert():
     else:
         return jsonify({'status': 'only POST request'}), 405
 
-
-@webhook.route('/alerting/api/v2/telegram', methods=['POST'])
+#/alerting/api/v2/telegram?chat=-4530347279
+@webhook.route('/alerting/api/v2/telegram', methods=['POST']) 
 def alert_new():
     ts = int(datetime.datetime.now().timestamp())
     if request.method == "POST":

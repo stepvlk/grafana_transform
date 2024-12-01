@@ -18,6 +18,7 @@ USER 1001
 
 EXPOSE 5000
 CMD python3 alerting.py
+#CMD gunicorn -w 3 
 LABEL org.opencontainers.image.authors="Andrey.Stepankin"
 
 #sudo docker image build -f auto/Dockerfile -t alerting:1.0.0 . --network=host

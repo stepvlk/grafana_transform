@@ -1,14 +1,15 @@
 from flask import Blueprint, request, jsonify, Response
 adapter = Blueprint('adapter', __name__)
 import datetime
-from functions.chaker import Checker
+from functions.chacker import Checker
 from functions.base_state import collection_alert
 
 @adapter.route('/alerting/health', methods=['GET'])
 def get_health():
     return jsonify({'status': 'Started'}), 200
 
-@adapter.route('/adapter/api/v1/webhook/grafana', methods=['POST'])
+#/alerting/api/v1/adapter?chat=TEST
+@adapter.route('/alerting/api/v1', methods=['POST'])
 def alert():
     print(request.get_json())
     ts = int(datetime.datetime.now().timestamp())

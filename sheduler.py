@@ -1,10 +1,23 @@
-from flask import Blueprint, request, jsonify
-system = Blueprint('system', __name__)
-import datetime
-
-from pymongo import MongoClient
-import datetime
+from flask import Flask
 from config.config import config
+from flask_apscheduler import APScheduler
+
+from prometheus_flask_exporter import PrometheusMetrics
+
+from routes.system import system
+from pymongo import MongoClient
+
+import datetime
+import logging
+
+app = Flask(__name__, static_folder='', template_folder='')
+app.register_blueprint(system, prefix='api/v2/')
+logging.basicConfig(level=logging.ERROR)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+metrics = PrometheusMetrics(app)
+metrics.info('sheduler', 'production_version', version='1.0.0')
+
 
 base = f"mongodb://{config['db']['user']}:{config['db']['pass']}@{config['db']['url']}"
 
@@ -44,24 +57,22 @@ client_repeat_adapter = MongoClient(base)
 db_repeat_adapter = client_repeat_adapter['alerting']
 collection_repeat_adapter = db_repeat_adapter.grafana_repeat_adapter
 
-
-
-@system.route('/alerting/deleter', methods=['GET'])
-def deleter():
-    ts = int(datetime.datetime.now().timestamp()) - 600
+def update_statuses():
     try:
-        collection_status.delete_one({"timestamp": {"$lt" : ts}})
-        collection_status_mail.delete_one({"timestamp": {"$lt" : ts}})
+        dt = datetime.datetime.utcnow().strftime("%d %B %Y %I:%M%p")
+        ts = int(datetime.datetime.now().timestamp()) - 600
+        state = collection_status.delete_one({"timestamp": {"$lt" : ts}})
+        state_mail = collection_status_mail.delete_one({"timestamp": {"$lt" : ts}})
+        logger.info({"jobname": "netserver", "result": state, "result_mail": state_mail, "runtime": dt})
+        return {"jobname": "netserver", "result": state, "result_mail": state_mail, "runtime": dt}
     except:
-        pass
-    return jsonify({"status": "delete_old_alert_rules"}), 200
+        return {"jobname": "netserver", "status": "fail","runtime": dt}
 
-@system.route('/alerting/monitoring', methods=['GET'])
-def state_monitoring():
-    ts = int(datetime.datetime.now().timestamp()) - 600
-    try:
-        collection_status.delete_one({"timestamp": {"$lt" : ts}})
-        collection_status_mail.delete_one({"timestamp": {"$lt" : ts}})
-    except:
-        pass
-    return jsonify({"status": "delete_old_alert_rules"}), 200
+
+if __name__ == "__main__":
+    
+    scheduler = APScheduler()
+    scheduler.add_job(func=update_statuses, trigger='interval', id='updater', minutes=1, timezone='Europe/Moscow')
+
+    scheduler.start()
+    app.run(host=config['server']['adress'], port=int(config['server']['port']), debug=False)

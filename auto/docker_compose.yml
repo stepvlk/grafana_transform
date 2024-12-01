@@ -9,6 +9,8 @@ services:
       - DB_USER=alerting
       - DB_PASSWORD=alerting
       - POINT_URL=<telegram>
+      - NOTIFICATION_TOKEN=<your_token>
+      - NOTIFICATION_CHANNEL=<your_chat_code>
     network_mode: host
   
   mongo:

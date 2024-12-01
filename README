@@ -1,0 +1,10 @@
+#### Backend for processing and forwarding alerts from Grafana:
+
+##### Functional features:
+- Processing of webhook rules with the ability to generate images from the render plugin
+- Skips the garbage rules of grafana version 9x when the backend drops off a lot of no_data
+- It is possible to repeat alerts if nginx returns 429
+- The transformation of the new alert to the old json format, if suddenly you use a bot and you don't really want to rewrite it
+- Forwarding to webhook-based mail with the ability to refine the template for yourself
+- Long-term storage of alerts in MongoDB
+- Logging output for Clickhouse for further spam analysis of incorrect rules in grafana
