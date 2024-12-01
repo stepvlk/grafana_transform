@@ -1,0 +1,13 @@
+#Pillow==6.2.2
+Flask
+Flask-APScheduler
+Flask-Caching
+Flask-Cors
+prometheus-flask-exporter
+pymongo
+gunicorn
+requests
+Pillow
+
+
+

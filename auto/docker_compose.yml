@@ -1,0 +1,33 @@
+version: '3.1'
+services:
+  netmon_ui:
+    image: alerts:1.0.0
+    ports:
+      - 6845:6845
+    environment:
+      - DB_URL=127.0.0.1:27017
+      - DB_USER=alerting
+      - DB_PASSWORD=alerting
+      - POINT_URL=<telegram>
+    network_mode: host
+  
+  mongo:
+    image: mongo
+    ports:
+     - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: alerting
+      MONGO_INITDB_ROOT_PASSWORD: alerting
+    network_mode: host
+    restart: always
+  
+  mongo-express:
+    image: mongo-express
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: alerting
+      ME_CONFIG_MONGODB_ADMINPASSWORD: alerting
+      ME_CONFIG_MONGODB_URL: mongodb://alerting:alerting@127.0.0.1:27017/
+    restart: always
+    
