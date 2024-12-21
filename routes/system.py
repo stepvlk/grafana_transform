@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, make_response
 system = Blueprint('system', __name__)
 import datetime
 
@@ -57,11 +57,10 @@ def deleter():
     return jsonify({"status": "delete_old_alert_rules"}), 200
 
 @system.route('/alerting/monitoring', methods=['GET'])
-def state_monitoring():
-    ts = int(datetime.datetime.now().timestamp()) - 600
-    try:
-        collection_status.delete_one({"timestamp": {"$lt" : ts}})
-        collection_status_mail.delete_one({"timestamp": {"$lt" : ts}})
-    except:
-        pass
-    return jsonify({"status": "delete_old_alert_rules"}), 200
+def monitoring():
+    
+    text = f"grafana_alerting_status,status_cache=test no_data_count={collection_status.count_documents({})},mongo_alerts_count={collection_alert.count_documents({})},mongo_mail_count={collection_alert_mail.count_documents({})}"
+    response = make_response(text)
+    response.mimetype = "text/plain"
+    return response 
+

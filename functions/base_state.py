@@ -31,7 +31,7 @@ collection_repeat_mail = db_repeat_mail.grafana_repeat_mail
 
 class Base():
 
-    def skip_rule(rule_id):
+    def skip_rules(rule_id):
         if rule_id in config['silent_ruleid']:
             return {"state": "skip"}
         else:
@@ -39,7 +39,7 @@ class Base():
 
 
     def checker_webhook(query, state):
-        state = Base.skip_rule(str(query['ruleId']))
+        state = Base.skip_rules(str(query['ruleId']))
         if state['state'] != "skip":
             ts = int(datetime.datetime.now().timestamp())        
             if state == "no_data":
@@ -60,7 +60,7 @@ class Base():
                     return "pass"
             
     def checker_mail(query, state):
-        state = Base.skip_rule(str(query['ruleId']))
+        state = Base.skip_rules(str(query['ruleId']))
         if state['state'] != "skip":
             ts = int(datetime.datetime.now().timestamp())
             
@@ -83,6 +83,8 @@ class Base():
                     collection_status_mail.delete_one({"ruleId": str(query['ruleId'])})
                     return "pass"
     
+    
+
     def repeat_webhook_save(query):
         collection_repeat.insert_one(query)
 

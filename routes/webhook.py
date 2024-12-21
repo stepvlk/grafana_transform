@@ -43,3 +43,13 @@ def alert_new():
         return jsonify({'data': 'transaction finish'}), 200
     else:
         return jsonify({'status': 'only POST request'}), 405
+    
+
+@webhook.route('/alerting/api/v1/repeat', methods=['POST'])
+def alert_rep():
+
+    if request.method == "POST":
+        Checker.check_repeat_rules(request.get_json(), request.args['chat'])
+        return jsonify({'data': 'ok'}), 200
+    else:
+        pass 

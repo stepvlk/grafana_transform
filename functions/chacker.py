@@ -5,12 +5,28 @@ import logging
 from functions.base_state import Base
 from functions.sender import Sender
 import re
+from pymongo import MongoClient
+
+base = f"mongodb://{config['db']['user']}:{config['db']['pass']}@{config['db']['url']}"
 
 logger = logging.getLogger('werkzeug')
 logging.basicConfig(level=logging.INFO)
 handler = logging.FileHandler('logs/notifications.log')
 logger.addHandler(handler)
 
+
+client_repeat = MongoClient(base)
+db_repeat = client_repeat['alerting']
+collection_repeat = db_repeat.grafana_repeat
+
+def find_diff(data1, data2):
+    
+    result = []
+    
+    for r1 in data1:
+        if r1['metric'] not in [x['metric'] for x in data2]:
+            result.append(r1)
+    return result
 
 def check_keys(query):
     
@@ -80,7 +96,56 @@ class Checker():
                 print({"timestamp": ts,"rule": "ALERTING","url":query['ruleUrl'], "state": query['state'], "sending": "send", "date": dt, "duration": time.time() - start_time, "channel": chat}) 
         else:
             pass 
+    
+    def check_repeat_rules(query, chat):
+        start_time = time.time()
+        ts = int(datetime.datetime.now().timestamp())
+        dt = datetime.datetime.utcnow().strftime("%d %B %Y %I:%M%p")
+        
+        if query['state'] == "no_data":
+           logger.info({"timestamp": ts, "rule": "NO_DATA","url":query['ruleUrl'], "state": query['state'], "sending": "skip", "date": dt, "duration": time.time() - start_time, "channel": chat}) 
+        elif query['state'] == "ok":
+        
+            status = collection_repeat.find_one({"ruleId" : query['ruleId'], "chat": chat})
+            if status is None:
+                logger.info({"timestamp": ts, "rule": "OK","url":query['ruleUrl'], "state": query['state'], "sending": "skip", "date": dt, "duration": time.time() - start_time, "channel": chat})
+            else:
+                Sender.send_message_webhook(query, chat)
+                collection_repeat.delete_one({"ruleId": query['ruleId']})
+                logger.info({"timestamp": ts, "rule": "OK","url":query['ruleUrl'], "state": query['state'], "sending": "send", "date": dt, "duration": time.time() - start_time, "channel": chat})
+        
+        elif query['state'] == "alerting":
+            status = collection_repeat.find_one({"ruleId" : query['ruleId'], "chat": chat})
+            if status is None:
+                query['chat'] = chat
+                collection_repeat.insert_one(query)
+                Sender.send_message_webhook(query, chat)
+                logger.info({"timestamp": ts, "rule": "ALERTING","url":query['ruleUrl'], "state": query['state'], "sending": "send", "date": dt, "duration": time.time() - start_time, "channel": chat})
+            else:
+                if len(query['evalMatches']) > len(status['evalMatches']):
+                    Sender.send_message_webhook(query, chat)
+                    query['chat'] = chat
+                    collection_repeat.delete_one({"ruleId": query['ruleId']})
+                    collection_repeat.insert_one(query)
+                    logger.info({"timestamp": ts, "rule": "REPEAT_NEW","url":query['ruleUrl'], "state": query['state'], "sending": "send", "date": dt, "duration": time.time() - start_time, "channel": chat})
+                
+                if len(query['evalMatches']) < len(status['evalMatches']):
+                    
+                    setter = find_diff(status['evalMatches'], query['evalMatches'])
 
+                    query['title'] = query['title'].replace('[Alerting]', '[OK]')
+                    query['state'] = "ok"
+                    query['evalMatches'] = setter
+                    query['chat'] = chat
+                    
+                    collection_repeat.delete_one({"ruleId": query['ruleId']})
+                    collection_repeat.insert_one(query)
+                    Sender.send_message_webhook(query, chat)
+                    
+                    logger.info({"timestamp": ts, "rule": "REPEAT_OK","url":query['ruleUrl'], "state": query['state'], "sending": "send", "date": dt, "duration": time.time() - start_time, "channel": chat})
+                
+                else:
+                    logger.info({"timestamp": ts, "rule": "ALERTING","url":query['ruleUrl'], "state": query['state'], "sending": "skip", "date": dt, "duration": time.time() - start_time, "channel": chat}) 
     
     def checker_mail(query, chat):
         start_time = time.time()
