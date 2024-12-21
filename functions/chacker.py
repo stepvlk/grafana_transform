@@ -49,6 +49,25 @@ def check_keys(query):
     else:
         return {"state": "grf", "query": query}
 
+def check_metrics(query):
+    result = []
+    metrics = re.findall(r'\[(.*?)\]', query)
+    for metric in metrics:
+        
+        labels = re.search('labels=.*?({.*})', metric).group(1)
+        host = re.search('host=.*?(.*megafon.ru)', metric).group(1)
+        if host:
+            values = re.search('value.*?(\d+)', metric)
+        #result += f"tag: {host} value: {values}\n"
+            result.append({host.group(1): values, "tag": {}})
+        types = re.search('type=.*?(.*megafon.ru)', metric)
+        if types:
+            values = re.search('value.*?(\d+)', metric)
+        #result += f"tag: {host} value: {values}\n"
+            result.append({types.group(1): values, "tag": {}})
+ 
+    return result 
+
 
 class Checker():
     
@@ -197,6 +216,7 @@ class Checker_New_Alerting():
     def transform(data, chat, thread):
 
         for res in data['alerts']:
+            #mm = check_metrics(res['valueString'])
             dashId = re.findall(r'(d)/(.*)\?', res['panelURL'])[0][1]
             orgId = re.search('orgId.*?(\d+)', res['panelURL']).group(1)
             panelId = re.search('viewPanel.*?(\d+)', res['panelURL']).group(1)
@@ -209,12 +229,11 @@ class Checker_New_Alerting():
                 status = "alerting"
                 check_FM = check_keys(res)
                 if check_FM['state'] == "fm":
-                    
                     result = {   "title": res['labels']['alertname'], 
                                     "state": status,
                                     "ruleId": res['labels']['grafana_folder'], 
                                     "ruleName": data['receiver'],
-                                    "evalMatches": metrics,
+                                    "evalMatches": [], #metrics
                                     "orgId": int(orgId),
                                     "dashboardId": dashId,
                                     "panelId": int(panelId),
@@ -222,41 +241,27 @@ class Checker_New_Alerting():
                                     "ruleUrl": res['panelURL'],
                                     "message": res['annotations']['description']}
                     results.append(result)
-                
                 if check_FM['state'] == "grf":
-                    if res['annotations'] == {}:
-                        
+
+                    if 'message' in res['annotations'] or 'description' in res['annotations']:
                         result = {   "title": res['labels']['alertname'], 
                                         "state": status,
                                         "ruleId": res['labels']['grafana_folder'], 
                                         "ruleName": data['receiver'],
-                                        "evalMatches": metrics,
+                                        "evalMatches": [],
                                         "orgId": int(orgId),
                                         "dashboardId": dashId,
                                         "panelId": int(panelId),
                                         "tags": res['labels'],
                                         "ruleUrl": res['panelURL'],
-                                        "message": "The description field is empty" }
-                        results.append(result)
-                    if 'description' in res['annotations']:
-                        result = {   "title": res['labels']['alertname'], 
-                                        "state": status,
-                                        "ruleId": res['labels']['grafana_folder'], 
-                                        "ruleName": data['receiver'],
-                                        "evalMatches": metrics,
-                                        "orgId": int(orgId),
-                                        "dashboardId": dashId,
-                                        "panelId": int(panelId),
-                                        "tags": res['labels'],
-                                        "ruleUrl": res['panelURL'],
-                                        "message": res['annotations']['description'] }
+                                        "message": res['annotations']['description'] if 'description' in res['annotations'] else res['annotations']['message'] }
                         results.append(result)
                     else:
                         result = {   "title": res['labels']['alertname'], 
                                         "state": status,
                                         "ruleId": res['labels']['grafana_folder'], 
                                         "ruleName": data['receiver'],
-                                        "evalMatches": metrics,
+                                        "evalMatches": [],
                                         "orgId": int(orgId),
                                         "dashboardId": dashId,
                                         "panelId": int(panelId),
@@ -282,7 +287,7 @@ class Checker_New_Alerting():
                     results.append(result)
                 
                 if check_FM['state'] == "grf":
-                    if 'description' in res['annotations']:
+                    if 'description' in res['annotations'] or 'message' in res['annotations']: 
                         result = {  "title": res['labels']['alertname'], 
                                     "state": status,
                                     "ruleId": res['labels']['grafana_folder'], 
@@ -293,8 +298,9 @@ class Checker_New_Alerting():
                                     "panelId": int(panelId),
                                     "tags": res['labels'],
                                     "ruleUrl": res['panelURL'],
-                                    "message": res['annotations']['description'] }
+                                    "message": res['annotations']['description'] if 'description' in res['annotations'] else res['annotations']['message'] } 
                         results.append(result)
+
                     else:
                         result = {  "title": res['labels']['alertname'], 
                                     "state": status,
@@ -310,7 +316,8 @@ class Checker_New_Alerting():
                         results.append(result)
             else:
                 state = {"status": "skip"}
+            #print(results)
             state = Sender.send_new_format(results, chat, thread)
-            return(state)
+            return(state) 
 
     
